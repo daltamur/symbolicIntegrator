@@ -31,12 +31,11 @@ import scala.util.matching.Regex
 
 
 //E->T [E2]|T [E3]
-//E2-> '+' E | '-' E
+//E2-> '+' E
 //E3-> '-' E
-//T->F [T2]|F [T3]
-//T2-> '*' T
-//T3-> '/' T
-//F->'('E')'|var|const|FExp
+//T->F [TE]
+//TE-> '*' T| '/' T
+//F->'('E')'|var|const|FExp|Sin(E)
 //FExp -> F'^'F
 //we're gonna use case classes just b/c they include the to-string method from the get-go
 
@@ -49,20 +48,20 @@ abstract class F extends S
 
 case class E(l: T, r: Option[Either[E2, E3]]) extends S{
   override def eval(): Unit = {
-    print("<Start E>")
+    //print("<Start E>")
     l.eval()
     r match {
       case Some(Left(r)) => r.eval()
       case Some(Right(r)) => r.eval()
       case None =>
     }
-    print("<End E>")
+    //print("<End E>")
   }
 }
 
 case class EP(l: T, r: Option[Either[E2, E3]]) extends F {
   override def eval(): Unit = {
-    print("<start parenthesis>")
+    //print("<start parenthesis>")
     print('(')
     l.eval()
     r match {
@@ -71,7 +70,7 @@ case class EP(l: T, r: Option[Either[E2, E3]]) extends F {
       case None => //print()
     }
     print(')')
-    print("<end parenthesis>")
+    //print("<end parenthesis>")
 
   }
 }
@@ -92,14 +91,14 @@ case class E3(l: E) extends S{
 
 case class T(l: F, r: Option[TE]) extends S{
   override def eval(): Unit = {
-    print("<Start T>")
+    //print("<Start T>")
     l.eval()
     r match {
       case Some(r) => r.eval()
       case None => //print()
     }
 
-    print("<End T>")
+    //print("<End T>")
   }
 }
 
@@ -113,11 +112,11 @@ case class TE(l: T, operation: Char) extends S{
 
 case class FExp(l: F, r: F) extends F{
   override def eval(): Unit = {
-    print("<Start exp>")
+    //print("<Start exp>")
     l.eval()
     print('^')
     r.eval()
-    print("<End exp>")
+    //print("<End exp>")
   }
 }
 
@@ -125,15 +124,14 @@ case class Var(n: String) extends F {
   override def eval(): Unit = {print(n)}
 }
 
-case class Const(v: Int) extends F {
+case class Const(v: Double) extends F {
   //def eval(env: Main.Environment): Int = v
-
   override def eval(): Unit = {print(v)}
 }
 
 
 class full_expression_parser(input: String) {
-  val constregex: Regex = "^[0-9]+".r
+  val constregex: Regex = "^[0-9]+(\\.[0-9]+)?".r
   val varregex: Regex = "^[A-Za-z]+".r
 
   //this will serve as our incrementer in parsing the expression
@@ -196,16 +194,16 @@ class full_expression_parser(input: String) {
       //println("index at F")
       //println(const.toInt)
       //println(index)
-      Const(const.toInt)
+      Const(const.toDouble)
       if(index <= input.length-1){
         if(input(index) == '^'){
           index+=1
-          FExp(Const(const.toInt), parseF())
+          FExp(Const(const.toDouble), parseF())
         }else{
-          Const(const.toInt)
+          Const(const.toDouble)
         }
       }else{
-        Const(const.toInt)
+        Const(const.toDouble)
       }
     }else if(input(index) == '('){
       println("starting parse of parenthesized expression")
@@ -247,7 +245,15 @@ class full_expression_parser(input: String) {
 
 object Main{
   def main(args: Array[String]): Unit ={
-    val expr = new full_expression_parser("(x+(92*x^(5*x))/(54+(2*x)-54+72))")
+    //E->T [E2]|T [E3]
+    //E2-> '+' E
+    //E3-> '-' E
+    //T->F [TE]
+    //TE-> '*' T| '/' T
+    //F->'('E')'|var|const|FExp|Sin(E)
+    //FExp -> F'^'F
+    //we're gonna use case classes just b/c they include the to-string method from the get-go
+    val expr = new full_expression_parser("(x+(92*x^(5.97264*x)))/54*(2*x)-54+7")
     val x = expr.parseS()
     println(x)
     x.eval()
