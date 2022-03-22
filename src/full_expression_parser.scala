@@ -51,7 +51,8 @@ case class E(l: T, r: Option[Either[E2, E3]]) extends S{
     //print("<Start E>")
     l.eval()
     r match {
-      case Some(Left(r)) => r.eval()
+      case Some(Left(r)) =>
+        r.eval()
       case Some(Right(r)) => r.eval()
       case None =>
     }
@@ -112,11 +113,11 @@ case class TE(l: T, operation: Char) extends S{
 
 case class FExp(l: F, r: F) extends F{
   override def eval(): Unit = {
-    //print("<Start exp>")
+    print("<Start exp>")
     l.eval()
     print('^')
     r.eval()
-    //print("<End exp>")
+    print("<End exp>")
   }
 }
 
@@ -131,7 +132,7 @@ case class Const(v: Double) extends F {
 
 
 class full_expression_parser(input: String) {
-  val constregex: Regex = "^[0-9]+(\\.[0-9]+)?".r
+  val constregex: Regex = "^(\\-|(\\d(\\.))?)[0-9]+(\\.[0-9]+)?".r
   val varregex: Regex = "^[A-Za-z]+".r
 
   //this will serve as our incrementer in parsing the expression
@@ -160,10 +161,19 @@ class full_expression_parser(input: String) {
   }
 
   def parseT(isExponent: Boolean): T = {
-    if (isExponent) {
+    if (input(index) != '-'){
       T(parseF(), parseTTail())
     }else{
-      T(parseF(), parseTTail())
+      val negconstregex: Regex = "^\\-[0-9]+(\\.[0-9]+)?".r
+      val currStrVal = input.substring(index)
+      val constsVal = negconstregex.findAllIn(currStrVal)
+      if(constsVal.hasNext){
+        T(parseF(), parseTTail())
+      }else{
+        index+=1
+        T(Const(-1.0),(Some(TE(parseT(true), '*'))) )
+      }
+
     }
   }
 
@@ -185,9 +195,9 @@ class full_expression_parser(input: String) {
   def parseF(): F = {
     // Get the unparsed part of the string.
     val currStr = input.substring(index)
-
     // Get either the const or var which is there.
     val consts = constregex.findAllIn(currStr)
+    //print(consts.hasNext)
     if (consts.hasNext){
       val const: String = consts.next()
       index += const.length()
@@ -198,7 +208,32 @@ class full_expression_parser(input: String) {
       if(index <= input.length-1){
         if(input(index) == '^'){
           index+=1
-          FExp(Const(const.toDouble), parseF())
+          if(input(index) != '-') {
+            FExp(Const(const.toDouble), parseF())
+          }else{
+            //If we have a negative value put together with the exponent, there's a few things we need to do.
+            //first we'll check if this is just a negative number
+            //if the character after the current index is a '(', then we really have (-1*EP)
+            //if the character after the current index is a variable letter, then we really have (-1*var)
+            val negconstregex: Regex = "^\\-[0-9]+(\\.[0-9]+)?".r
+            val currStrVal = input.substring(index)
+            val constsVal = negconstregex.findAllIn(currStrVal)
+            if(constsVal.hasNext){
+              val stringVal = constsVal.next()
+              index+= stringVal.length()
+              FExp(Const(const.toDouble),Const(stringVal.toDouble))
+            }else if(input(index+1) == '('){
+              index+=1
+              FExp(Const(const.toDouble),EP(T(Const(-1),Some(TE(T(parseF(), None), '*'))), None))
+            }else{
+              //we have a variable letter
+              val varString = varregex.findAllIn(currStrVal)
+              index += varString.length
+              FExp(Const(const.toDouble),Var(varString.next()))
+            }
+
+
+          }
         }else{
           Const(const.toDouble)
         }
@@ -213,7 +248,32 @@ class full_expression_parser(input: String) {
       if(index<= input.length-1){
         if(input(index) == '^'){
           index+=1
-          FExp(nested_expression, parseF())
+          if(input(index) != '-') {
+            FExp(nested_expression, parseF())
+          }else{
+            //If we have a negative value put together with the exponent, there's a few things we need to do.
+            //first we'll check if this is just a negative number
+            //if the character after the current index is a '(', then we really have (-1*EP)
+            //if the character after the current index is a variable letter, then we really have (-1*var)
+            val negconstregex: Regex = "^\\-[0-9]+(\\.[0-9]+)?".r
+            val currStrVal = input.substring(index)
+            val constsVal = negconstregex.findAllIn(currStrVal)
+            if(constsVal.hasNext){
+              val stringVal = constsVal.next()
+              index+= stringVal.length()
+              FExp(nested_expression,Const(stringVal.toDouble))
+            }else if(input(index+1) == '('){
+              index+=1
+              FExp(nested_expression,EP(T(Const(-1),Some(TE(T(parseF(), None), '*'))), None))
+            }else{
+              //we have a variable letter
+              val varString = varregex.findAllIn(currStrVal)
+              index += varString.length
+              FExp(nested_expression,Var(varString.next()))
+            }
+
+
+          }
         }else{
           nested_expression
         }
@@ -231,7 +291,32 @@ class full_expression_parser(input: String) {
       if(index<= input.length-1){
         if(input(index) == '^'){
           index+=1
-          FExp(Var(varname), parseF())
+          if(input(index) != '-') {
+            FExp(Var(varname), parseF())
+          }else{
+            //If we have a negative value put together with the exponent, there's a few things we need to do.
+            //first we'll check if this is just a negative number
+            //if the character after the current index is a '(', then we really have (-1*EP)
+            //if the character after the current index is a variable letter, then we really have (-1*var)
+            val negconstregex: Regex = "^\\-[0-9]+(\\.[0-9]+)?".r
+            val currStrVal = input.substring(index)
+            val constsVal = negconstregex.findAllIn(currStrVal)
+            if(constsVal.hasNext){
+              val stringVal = constsVal.next()
+              index+= stringVal.length()
+              FExp(Var(varname),Const(stringVal.toDouble))
+            }else if(input(index+1) == '('){
+              index+=1
+              FExp(Var(varname),EP(T(Const(-1),Some(TE(T(parseF(), None), '*'))), None))
+            }else{
+              //we have a variable letter
+              val varString = varregex.findAllIn(currStrVal)
+              index += varString.length
+              FExp(Var(varname),Var(varString.next()))
+            }
+
+
+          }
         }else{
           Var(varname)
         }
@@ -253,7 +338,8 @@ object Main{
     //F->'('E')'|var|const|FExp|Sin(E)
     //FExp -> F'^'F
     //we're gonna use case classes just b/c they include the to-string method from the get-go
-    val expr = new full_expression_parser("(x+(92*x^(5.97264*x)))/54*(2*x)-54+7")
+    //^\-?[0-9]+(\.[0-9]+)?|^\-?[0-9]+(\.[0-9]+)? (potential regex for negative numbers
+    val expr = new full_expression_parser("x+-(92*x^(-5.97264*5^(x*5^(x+9)))/2)/54*(2*x)+54+7")
     val x = expr.parseS()
     println(x)
     x.eval()
