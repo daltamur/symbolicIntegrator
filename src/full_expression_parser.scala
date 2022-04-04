@@ -3,6 +3,7 @@ import java.util
 import scala.collection.mutable
 import scala.util.control.Breaks.break
 import scala.util.matching.Regex
+import java.time.LocalDateTime
 
 //S->E
 //E-> Term Term_Tail
@@ -36,6 +37,7 @@ import scala.util.matching.Regex
 //T->F [TE]
 //TE-> '*' T| '/' T
 //F->'('E')'|var|const|FExp|Sin(E)
+//Note that there can be a negative sign on each possible F, this muddles things up a bit but it's necessary
 //FExp -> F'^'F
 //we're gonna use case classes just b/c they include the to-string method from the get-go
 
@@ -338,8 +340,8 @@ object Main{
     //F->'('E')'|var|const|FExp|Sin(E)
     //FExp -> F'^'F
     //we're gonna use case classes just b/c they include the to-string method from the get-go
-    //^\-?[0-9]+(\.[0-9]+)?|^\-?[0-9]+(\.[0-9]+)? (potential regex for negative numbers
-    val expr = new full_expression_parser("x+-(92*x^(-5.97264*5^(x*5^(x+9)))/2)/54*(2*x)+54+7")
+    //^\-?[0-9]+(\.[0-9]+)?|^\-?[0-9]+(\.[0-9]+)? (potential regex for negative numbers)
+    val expr = new full_expression_parser("x+(92*x^(5.97264*5^(x*5^(x+9)))/2)/-54*(2*-x)/54+7")
     val x = expr.parseS()
     println(x)
     x.eval()
