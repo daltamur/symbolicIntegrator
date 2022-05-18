@@ -56,7 +56,7 @@ case class E(l: T, r: Option[Either[E2, E3]]) extends S{
       case Some(Left(r)) =>
         r.eval()
       case Some(Right(r)) => r.eval()
-      case None =>
+      case None => print("")
     }
     //print("<End E>")
   }
@@ -70,7 +70,7 @@ case class EP(l: T, r: Option[Either[E2, E3]]) extends F {
     r match {
       case Some(Left(r)) => r.eval()
       case Some(Right(r)) => r.eval()
-      case None => //print()
+      case None => print("")
     }
     print(')')
     //print("<end parenthesis>")
@@ -98,7 +98,7 @@ case class T(l: F, r: Option[TE]) extends S{
     l.eval()
     r match {
       case Some(r) => r.eval()
-      case None => //print()
+      case None => print("")
     }
 
     //print("<End T>")
@@ -115,11 +115,9 @@ case class TE(l: T, operation: Char) extends S{
 
 case class FExp(l: F, r: F) extends F{
   override def eval(): Unit = {
-    print("<Start exp>")
     l.eval()
     print('^')
     r.eval()
-    print("<End exp>")
   }
 }
 
@@ -134,7 +132,7 @@ case class Const(v: Double) extends F {
 
 
 class full_expression_parser(input: String) {
-  val constregex: Regex = "^(\\-|(\\d(\\.))?)[0-9]+(\\.[0-9]+)?".r
+  val constregex: Regex = "^(\\-|(\\d(\\.))?)\\d+(\\.\\d+)?".r
   val varregex: Regex = "^[A-Za-z]+".r
 
   //this will serve as our incrementer in parsing the expression
@@ -341,9 +339,18 @@ object Main{
     //FExp -> F'^'F
     //we're gonna use case classes just b/c they include the to-string method from the get-go
     //^\-?[0-9]+(\.[0-9]+)?|^\-?[0-9]+(\.[0-9]+)? (potential regex for negative numbers)
-    val expr = new full_expression_parser("x+(92*x^(5.97264*5^(x*5^(x+9)))/2)/-54*(2*-x)/54+7")
+    //val expr = new full_expression_parser("x+(92*x^(5.97264*5^(x*5^(x+9)))/2)/-54*(2*-x)/54+7")
+    print("Expression? ")
+    val exprVal=scala.io.StdIn.readLine()
+    if (exprVal == "quit") {
+      System.exit(0)
+    }
+    val expr = new full_expression_parser(exprVal)
     val x = expr.parseS()
     println(x)
     x.eval()
+    println()
+    println()
+    Main.main(args)
   }
 }
