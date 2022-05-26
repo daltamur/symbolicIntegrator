@@ -4,6 +4,12 @@ import scala.collection.mutable
 import scala.util.control.Breaks.break
 import scala.util.matching.Regex
 import java.time.LocalDateTime
+import java.util.concurrent._
+import java.util.concurrent.ForkJoinTask
+import javax.management._
+import java.lang.management.ManagementFactory
+import scala.reflect.internal.ClassfileConstants
+import scala.reflect.internal.ClassfileConstants.instanceof
 
 //S->E
 //E-> Term Term_Tail
@@ -41,16 +47,24 @@ import java.time.LocalDateTime
 //FExp -> F'^'F
 //we're gonna use case classes just b/c they include the to-string method from the get-go
 
-abstract class S{
+abstract class S extends java.util.concurrent.RecursiveAction{
   // some sort of abstract function would go here
+  var integrationVal: String
   def eval()
+  def getIntegrationVal: String
 }
 
-abstract class F extends S
+abstract class F extends S{
+  def getParamVal: Either[String, Double]
+  def runCompute()
+}
 
 case class E(l: T, r: Option[Either[E2, E3]]) extends S{
+
+  override var integrationVal: String = _
+
   override def eval(): Unit = {
-    //print("<Start E>")
+    /*
     l.eval()
     r match {
       case Some(Left(r)) =>
@@ -58,11 +72,34 @@ case class E(l: T, r: Option[Either[E2, E3]]) extends S{
       case Some(Right(r)) => r.eval()
       case None => print("")
     }
-    //print("<End E>")
+     */
   }
+
+  override def compute(): Unit = {
+    l.compute()
+    r match {
+      case Some(Left(r)) =>
+        r.fork()
+        r.join()
+        integrationVal = l.getIntegrationVal+"+"+r.getIntegrationVal
+      case Some(Right(r)) =>
+        r.fork()
+        r.join()
+        integrationVal = l.getIntegrationVal+"-"+r.getIntegrationVal
+      case None => integrationVal = l.getIntegrationVal
+    }
+
+
+
+  }
+
+  override def getIntegrationVal(): String = {return integrationVal}
 }
 
 case class EP(l: T, r: Option[Either[E2, E3]]) extends F {
+
+  override var integrationVal: String = _
+
   override def eval(): Unit = {
     //print("<start parenthesis>")
     print('(')
@@ -76,58 +113,257 @@ case class EP(l: T, r: Option[Either[E2, E3]]) extends F {
     //print("<end parenthesis>")
 
   }
+
+  override def compute(): Unit = ???
+
+  override def getIntegrationVal(): String = {return integrationVal}
+
+  override def getParamVal: Either[String, Double] = ???
+
+  override def runCompute(): Unit = {compute()}
 }
 
 case class E2(l: E) extends S{
+  override var integrationVal: String = _
+
+
   override def eval(): Unit = {
     print('+')
     l.eval()
   }
+
+  override def compute(): Unit = {
+    l.compute()
+    integrationVal = l.getIntegrationVal()
+  }
+
+  override def getIntegrationVal(): String = {return integrationVal}
+
 }
 
 case class E3(l: E) extends S{
+
+  override var integrationVal: String = _
+
   override def eval(): Unit = {
     print('-')
     l.eval()
   }
+
+  override def compute(): Unit = {
+    l.compute()
+    integrationVal = l.getIntegrationVal()
+  }
+
+  override def getIntegrationVal(): String = {return integrationVal}
 }
 
 case class T(l: F, r: Option[TE]) extends S{
+  override var integrationVal: String = _
+
   override def eval(): Unit = {
     //print("<Start T>")
     l.eval()
     r match {
-      case Some(r) => r.eval()
+      //there is some multiplication or division happening if we have a TE
+      case Some(r) =>
+        r.l.r match {
+          //if the TE doesn't have a TE itself, then we know we likely have a simple exponent rule
+          //for now, this is the one we are going to deal with.
+          case None => r.operation match {
+            //we are just going to deal with multiplication for now, a little later on we'll handle division
+            case '*' =>
+          }
+        }
+
+      //There is no TE
       case None => print("")
     }
 
     //print("<End T>")
   }
+
+  override def getIntegrationVal: String = {return integrationVal}
+
+  def exponentRule(): Unit = {
+    //first, let's get the exponent
+    var newExponent = -1
+    l match {
+      case _: Const =>
+        r match {
+        //we already know there is a tail if we get this far, but we can only access the tail's variables if we do this pattern matching step
+        case Some(r) =>
+          r.l.l match {
+            case _: Const =>
+              //if we have two constants, just multiply them together and throw an x on the end
+              l.getParamVal match {
+                case Right(leftValue) =>
+                  r.l.l.getParamVal match {
+                    case Right(rightValue) =>
+                      val multiplicationVal = leftValue * rightValue
+                      integrationVal = multiplicationVal + "x"
+                  }
+              }
+
+            case _: Var =>
+              //so we have something like 5*x, so all we're going to do is divide the constant by 2 and slap an x on the end.
+              l.getParamVal match {
+                case Right(leftValue) =>
+                  val newCoefficient = leftValue/2.0
+                  r.l.l.getParamVal match {
+                    case Left(variableLetter) =>
+                      integrationVal = newCoefficient+variableLetter+"^2"
+                  }
+              }
+
+            case _: FExp =>
+            //this is for if we have something like 5*x^2. We are going to make sure the exponent is a variable raised to a constant
+            //(later on this will be more robust)
+              val fexpVal = r.l.l.asInstanceOf[FExp]
+              fexpVal.l match {
+                case _: Var =>
+                  val base = fexpVal.l.asInstanceOf[Var]
+                  fexpVal.r match {
+                    case _: Const =>
+                      val exponent = fexpVal.r.asInstanceOf[Const]
+                      val multiplier = l.asInstanceOf[Const]
+                      val newExponent = exponent.v+1.0
+                      val newMultiplier = multiplier.v/newExponent
+                      integrationVal = newMultiplier+base.n+"^"+newExponent
+                  }
+              }
+          }
+      }
+    }
+
+  }
+
+  override def compute(): Unit = {
+    //F->'('E')'|var|const|FExp|Sin(E)
+    //When we are computing an F, we either have an EP (an E expression nested in parentheses), a simple variable letter,
+    //some constant value, or an exponent. For now, we are going to worry about the constant values
+    r match {
+      //there is some multiplication or division happening if we have a TE
+      case Some(r) =>
+        r.l.r match {
+          //if the TE doesn't have a TE itself, then we know we likely have a simple exponent rule
+          //for now, this is the one we are going to deal with.
+          case None =>
+            r.operation match {
+            //we are just going to deal with multiplication for now, a little later on we'll handle division
+            case '*' => exponentRule()
+          }
+        }
+
+      //There is no TE
+      case None =>
+        l.runCompute()
+        integrationVal = l.getIntegrationVal
+    }
+  }
 }
 
 case class TE(l: T, operation: Char) extends S{
+  override var integrationVal: String = _
   override def eval(): Unit = {
     print(operation)
     l.eval()
   }
+
+  override def compute(): Unit = ???
+
+  override def getIntegrationVal(): String = {return integrationVal}
+
 }
 
 
 case class FExp(l: F, r: F) extends F{
+  override var integrationVal: String = _
   override def eval(): Unit = {
     l.eval()
     print('^')
     r.eval()
   }
+
+  def getBase: F = {return l}
+
+  def getExponent: F = {return r}
+
+  override def compute(): Unit = {
+    l match {
+      //we love pattern matching, folks
+      case _: Var =>
+        r match {
+          //no known integrals for something like x^x, so we will only worry about if we have something like
+          //1^x or x^1. Later on, we'll need to add some sort of exception catcher
+          case _:Const =>
+            val exp = r.getParamVal
+            var newCoefficient = ""
+            var newExp = 0.0
+            r.getParamVal match {
+              case Right(doubleVal) =>
+                newExp = doubleVal + 1.0
+                newCoefficient = "1/"+newExp.toInt
+            }
+            integrationVal = "("+newCoefficient+")"+"x^"+newExp.toInt
+        }
+
+
+      case _: Const =>r match {
+        //it is gratuitous right now to do it with two constants, so we'll do it if we have x^5 or something like that
+        case _:Var =>
+          var variableLetter = ""
+          var baseValue = 0.0
+          r.getParamVal match {
+            case Left(variable) => variableLetter = variable
+          }
+          l.getParamVal match {
+            case Right(doubleVal) => baseValue = doubleVal
+          }
+          integrationVal = "(("+baseValue+"^"+variableLetter+")/ln("+baseValue+"))"
+
+      }
+
+      case _ =>
+    }
+
+
+  }
+
+  override def getIntegrationVal(): String = {return integrationVal}
+
+  //this is a placeholder, we'll never really use this function
+  override def getParamVal: Either[String, Double] = {Left("NULL")}
+
+  override def runCompute(): Unit = {compute()}
 }
 
 case class Var(n: String) extends F {
+  override var integrationVal: String = _
   override def eval(): Unit = {print(n)}
+  def getVar: String = {return n}
+  override def compute(): Unit = {integrationVal = "(1/2)"+n+"^2"}
+  override def getIntegrationVal(): String = {return integrationVal}
+
+  override def getParamVal: Either[String, Double] = {Left(n)}
+
+  override def runCompute(): Unit = {compute()}
 }
 
 case class Const(v: Double) extends F {
   //def eval(env: Main.Environment): Int = v
+  override var integrationVal: String = _
   override def eval(): Unit = {print(v)}
+
+  override def compute(): Unit = {integrationVal = v+"x"}
+
+  def getConstVal: Double = {return v}
+
+  override def getIntegrationVal(): String = {return integrationVal}
+
+  override def getParamVal: Either[String, Double] = {Right(v)}
+
+  override def runCompute(): Unit = {compute()}
 }
 
 
@@ -327,7 +563,6 @@ class full_expression_parser(input: String) {
   }
 }
 
-
 object Main{
   def main(args: Array[String]): Unit ={
     //E->T [E2]|T [E3]
@@ -340,17 +575,28 @@ object Main{
     //we're gonna use case classes just b/c they include the to-string method from the get-go
     //^\-?[0-9]+(\.[0-9]+)?|^\-?[0-9]+(\.[0-9]+)? (potential regex for negative numbers)
     //val expr = new full_expression_parser("x+(92*x^(5.97264*5^(x*5^(x+9)))/2)/-54*(2*-x)/54+7")
-    print("Expression? ")
-    val exprVal=scala.io.StdIn.readLine()
-    if (exprVal == "quit") {
-      System.exit(0)
+    try {
+      print("Expression? ")
+      val exprVal = scala.io.StdIn.readLine()
+      if (exprVal == "quit") {
+        System.exit(0)
+      }
+      val expr = new full_expression_parser(exprVal)
+      val x = expr.parseE()
+      val x_parts = x.eval()
+      println(x)
+      x.eval()
+      x.compute()
+      println(x.getIntegrationVal())
+      println()
+      //x.compute()
+      println("Done computing")
+      Main.main(args)
     }
-    val expr = new full_expression_parser(exprVal)
-    val x = expr.parseS()
-    println(x)
-    x.eval()
-    println()
-    println()
-    Main.main(args)
+    catch {
+      case e: Exception =>
+        println("Something went wrong")
+        Main.main(args)
+    }
   }
 }
