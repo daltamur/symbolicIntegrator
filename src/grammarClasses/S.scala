@@ -5,4 +5,5 @@ abstract class S extends java.util.concurrent.RecursiveAction{
   var integrationVal: String
   def eval()
   def getIntegrationVal: String
+  def getString: String
 }

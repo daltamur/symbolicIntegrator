@@ -27,4 +27,6 @@ case class Const(v: Double) extends F {
   override def runCompute(): Unit = {
     compute()
   }
+
+  override def getString(): String = return v.toString
 }

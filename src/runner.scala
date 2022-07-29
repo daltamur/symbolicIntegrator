@@ -1,4 +1,4 @@
- object runner{
+object runner{
     def main(args: Array[String]): Unit ={
       //grammarClasses.E->grammarClasses.T [grammarClasses.E2]|grammarClasses.T [grammarClasses.E3]
       //grammarClasses.E2-> '+' grammarClasses.E
@@ -12,12 +12,17 @@
       //val expr = new full_expression_parser("x+(92*x^(5.97264*5^(x*5^(x+9)))/2)/-54*(2*-x)/54+7")
       try {
         print("Expression? ")
-        val exprVal = scala.io.StdIn.readLine()
+        var exprVal = scala.io.StdIn.readLine()
         if (exprVal == "quit") {
           System.exit(0)
         }
+        val expression = jas.core.Compiler.compile(exprVal)
+        //exprVal = (expression.expand().simplify().beautify().simplify().beautify().toString)
+        exprVal = expression.simplify().beautify().toString
+        println(exprVal)
         val expr = new full_expression_parser(exprVal)
         val x = expr.parseE()
+        println(x.getString)
         val x_parts = x.eval()
         println(x)
         x.eval()

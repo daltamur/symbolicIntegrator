@@ -70,4 +70,6 @@ case class FExp(l: F, r: F) extends F {
   override def runCompute(): Unit = {
     compute()
   }
+
+  override def getString(): String = l.getString+'^'+r.getString
 }

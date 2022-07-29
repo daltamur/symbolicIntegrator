@@ -36,4 +36,19 @@ case class E(l: T, r: Option[Either[E2, E3]]) extends S {
   override def getIntegrationVal(): String = {
     return integrationVal
   }
+
+  override def getString: String = {
+    r match {
+      case None =>
+        l.getString
+      case _: Option[Either[E2, E3]]=>
+        val rVal = r.get
+        rVal match {
+          case Left(rVal) =>
+            l.getString + '+' + rVal.getString
+          case Right(rVal) =>
+            l.getString+ '-' + rVal.getString
+        }
+    }
+  }
 }

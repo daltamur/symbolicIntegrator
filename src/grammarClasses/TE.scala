@@ -14,4 +14,5 @@ case class TE(l: T, operation: Char) extends S {
     return integrationVal
   }
 
+  override def getString: String = operation+l.getString
 }

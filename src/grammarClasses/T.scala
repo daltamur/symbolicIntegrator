@@ -82,6 +82,11 @@ case class T(l: F, r: Option[TE]) extends S {
 
   }
 
+   def getPossibleUValues(): Unit = {
+
+  }
+
+
   override def compute(): Unit = {
     //grammarClasses.F->'('grammarClasses.E')'|var|const|grammarClasses.FExp|Sin(grammarClasses.E)
     //When we are computing an grammarClasses.F, we either have an grammarClasses.EP (an grammarClasses.E expression nested in parentheses), a simple variable letter,
@@ -93,16 +98,49 @@ case class T(l: F, r: Option[TE]) extends S {
           //if the TE doesn't have a TE itself, then we know we likely have a simple exponent rule
           //for now, this is the one we are going to deal with.
           case None =>
-            r.operation match {
-              //we are just going to deal with multiplication for now, a little later on we'll handle division
-              case '*' => exponentRule()
+            l match {
+              case _: Const =>
+                r.l.l match {
+                  case _: Var =>
+                    r.operation match {
+                      //we are just going to deal with multiplication for now, a little later on we'll handle division
+                      case '*' => exponentRule()
+                    }
+
+                  case _: FExp =>
+                    r.operation match {
+                      //we are just going to deal with multiplication for now, a little later on we'll handle division
+                      case '*' => exponentRule()
+                    }
+                }
+              case _: Var =>
+                r.l.l match {
+                  case _: Const =>
+                    r.operation match {
+                      //note that this will throw up an error since I don't have it set for someone to write sometihng like
+                      //x*5, but it's a simple addition I just can't be bothered to include right now.
+                      case '*' => exponentRule()
+                    }
+                }
             }
+          case _:Option[TE] =>
+              println("We got a live one!")
         }
 
       //There is no TE
       case None =>
         l.runCompute()
         integrationVal = l.getIntegrationVal
+    }
+  }
+
+  override def getString: String = {
+    r match {
+      case None =>
+        l.getString()
+
+      case _:Option[TE] =>
+        l.getString+ r.get.getString
     }
   }
 }

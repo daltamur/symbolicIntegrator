@@ -26,4 +26,6 @@ case class Var(n: String) extends F {
   override def runCompute(): Unit = {
     compute()
   }
+
+  override def getString(): String = return n
 }

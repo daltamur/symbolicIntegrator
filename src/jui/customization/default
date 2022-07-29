@@ -1,0 +1,30 @@
+color_mode: RGB
+
+container_margin_x: 3
+container_margin_y: 3
+container_spacing: 3
+
+container_visible: false
+display_contour: true
+rounded: false
+
+contour_thickness: 0.1f
+rounding: 3
+
+background_color: 255,255,255,50
+mouse_pressed_background_color: 255,255,255,75
+mouse_over_background_color: 255,255,255,100
+
+contour_color: 0,0,0,255
+mouse_pressed_contour_color: 0,0,0,255
+mouse_over_contour_color: 0,0,0,255
+
+text_color: 255,255,255,255
+mouse_pressed_text_color: 255,255,255,255
+mouse_over_text_color: 255,255,255,255
+
+contextual_init_text_percentage: 0.55f
+auto_text_descent_compensation: false
+
+progress_bar_background_color: 255,255,255,200
+

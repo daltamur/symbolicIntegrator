@@ -17,4 +17,6 @@ case class E3(l: E) extends S {
   override def getIntegrationVal(): String = {
     return integrationVal
   }
+
+  override def getString: String = l.getString
 }
