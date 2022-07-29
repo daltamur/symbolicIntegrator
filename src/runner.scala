@@ -17,6 +17,8 @@ object runner{
           System.exit(0)
         }
         val expression = jas.core.Compiler.compile(exprVal)
+        //In the future, we will modify this just a bit so that if the initial integration doesn't work we'll try it on an expanded
+        //version of the expression
         //exprVal = (expression.expand().simplify().beautify().simplify().beautify().toString)
         exprVal = expression.simplify().beautify().toString
         println(exprVal)

@@ -82,8 +82,52 @@ case class T(l: F, r: Option[TE]) extends S {
 
   }
 
-   def getPossibleUValues(): Unit = {
+  def getNestedUVals(currentNode: F): Unit = {
+    currentNode match {
+      case _: EP =>
+        getPossibleUValues(currentNode.asInstanceOf[EP].l)
+        checkEExtension(currentNode.asInstanceOf[EP].r)
+        println(currentNode.getString())
 
+      case _ => println("No U's Here")
+    }
+  }
+
+   def getPossibleUValues(currentNode: T): Unit = {
+     //Since we know a U is almost certainly a nested expression, we will first look for the nested expressions
+     currentNode.l match {
+       case _: EP =>
+         getNestedUVals(currentNode.l)
+         println(currentNode.getString)
+
+       case _: FExp =>
+         getNestedUVals(currentNode.l.asInstanceOf[FExp].l)
+         getNestedUVals(currentNode.l.asInstanceOf[FExp].r)
+
+       case _ =>
+         checkTExtension(currentNode.r)
+
+     }
+
+  }
+
+  def checkEExtension(currentNode: Option[Either[E2, E3]]): Unit = {
+    currentNode match {
+      case Some(value) =>
+        value match {
+          case Left(value)  => getPossibleUValues(value.l.l)
+          case Right(value) => getPossibleUValues(value.l.l)
+        }
+
+      case _ => println("Nested expression finished")
+    }
+  }
+
+  def checkTExtension(currentNode: Option[TE]): Unit = {
+    currentNode match {
+      case Some(value) => getPossibleUValues(value.l)
+      case _ => println("No further U's here")
+    }
   }
 
 
@@ -91,6 +135,7 @@ case class T(l: F, r: Option[TE]) extends S {
     //grammarClasses.F->'('grammarClasses.E')'|var|const|grammarClasses.FExp|Sin(grammarClasses.E)
     //When we are computing an grammarClasses.F, we either have an grammarClasses.EP (an grammarClasses.E expression nested in parentheses), a simple variable letter,
     //some constant value, or an exponent. For now, we are going to worry about the constant values
+    getPossibleUValues(this)
     r match {
       //there is some multiplication or division happening if we have a TE
       case Some(r) =>
@@ -123,8 +168,6 @@ case class T(l: F, r: Option[TE]) extends S {
                     }
                 }
             }
-          case _:Option[TE] =>
-              println("We got a live one!")
         }
 
       //There is no TE
